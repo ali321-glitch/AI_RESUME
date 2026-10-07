@@ -19,14 +19,19 @@ st.set_page_config(page_title="ATS Resume Analyzer", page_icon="📄", layout="w
 
 
 # ----------------------------- helpers ---------------------------------
+def clean_key(key: str) -> str:
+    """Remove accidental spaces, newlines and quotes around a pasted key."""
+    return (key or "").strip().strip("\"'").strip()
+
+
 def get_api_key() -> str:
     """Read the key from Streamlit secrets, then env var, then sidebar input."""
     try:
         if "GEMINI_API_KEY" in st.secrets:
-            return st.secrets["GEMINI_API_KEY"]
+            return clean_key(st.secrets["GEMINI_API_KEY"])
     except Exception:
         pass  # no secrets file locally
-    return os.getenv("GEMINI_API_KEY", "")
+    return clean_key(os.getenv("GEMINI_API_KEY", ""))
 
 
 def extract_text(uploaded_file) -> str:
@@ -145,8 +150,8 @@ with st.sidebar:
     st.header("Settings")
     api_key = get_api_key()
     if not api_key:
-        api_key = st.text_input("Gemini API key", type="password",
-                                help="Get a free key at https://aistudio.google.com/apikey")
+        api_key = clean_key(st.text_input("Gemini API key", type="password",
+                                help="Get a free key at https://aistudio.google.com/apikey"))
     else:
         st.success("API key loaded from secrets")
     model_name = st.text_input("Gemini model", value=DEFAULT_MODEL,
@@ -165,6 +170,10 @@ if st.button("Analyze resume", type="primary", disabled=uploaded is None):
     if not api_key:
         st.error("Please provide a Gemini API key in the sidebar.")
         st.stop()
+    if not api_key.startswith("AIza"):
+        st.warning("This doesn't look like a Google AI Studio key (they usually start with "
+                   "'AIza'). If analysis fails with a 401 error, create a new key at "
+                   "https://aistudio.google.com/apikey")
 
     try:
         with st.spinner("Reading your resume..."):
